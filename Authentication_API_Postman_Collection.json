@@ -1,0 +1,923 @@
+{
+	"info": {
+		"_postman_id": "8b51d8b4-05d6-4eb2-a083-fca6f047ff6f",
+		"name": "User Auth & Admin API Collection",
+		"description": "Comprehensive Postman collection for the MongoDB-backed Node.js Express User Authentication, User Management, Activity Log, and Image Moderation APIs.\n\n### Collection Variables\n- **base_url**: The host address (e.g. `http://localhost:5000`).\n- **token**: Holds the JWT session token (automatically set upon Register, Login, or Reset Password).\n- **otp**: Holds the 6-digit OTP code (automatically set upon requesting a forgot password in non-production environments).\n- **user_id**: Target user ID for user management endpoints.\n- **image_id**: Target image ID for image moderation/deletion endpoints.\n- **temp_token**: Temporary token for completing 2FA login verification.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						""
+					]
+				},
+				"description": "Health check route to verify that the backend API server is running."
+			},
+			"response": []
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.token) {",
+									"    pm.collectionVariables.set(\"token\", response.token);",
+									"    console.log(\"Auth token automatically saved to collection variable 'token'\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"John Doe\",\n  \"emailAddress\": \"johndoe@example.com\",\n  \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registers a new user account. On a successful registration, it automatically saves the returned JWT token to the `token` collection variable."
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success) {",
+									"    if (response.require2FA) {",
+									"        pm.collectionVariables.set(\"temp_token\", response.tempToken);",
+									"        console.log(\"2FA verification required. tempToken saved to 'temp_token'\");",
+									"    } else if (response.token) {",
+									"        pm.collectionVariables.set(\"token\", response.token);",
+									"        console.log(\"Auth token automatically saved to collection variable 'token'\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"emailAddress\": \"johndoe@example.com\",\n  \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticates a user. If 2FA is active, returns a `tempToken` to verify code. If not, the returned JWT token is stored in the `token` collection variable and a refresh cookie is issued."
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password (OTP Request)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.otp) {",
+									"    pm.collectionVariables.set(\"otp\", response.otp);",
+									"    console.log(\"OTP automatically saved to collection variable 'otp'\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"emailAddress\": \"johndoe@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/forgot-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "Initiates password recovery. In local development environments, the 6-digit OTP code is returned directly in the response payload and automatically captured as the `otp` collection variable for testing convenience."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify OTP Code",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"emailAddress\": \"johndoe@example.com\",\n  \"otp\": \"{{otp}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/verify-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"verify-otp"
+							]
+						},
+						"description": "Verifies that the provided 6-digit OTP reset code is valid and has not expired."
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.token) {",
+									"    pm.collectionVariables.set(\"token\", response.token);",
+									"    console.log(\"Auth token automatically saved to collection variable 'token'\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"emailAddress\": \"johndoe@example.com\",\n  \"otp\": \"{{otp}}\",\n  \"password\": \"newpassword123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/reset-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"reset-password"
+							]
+						},
+						"description": "Resets the user's password using the validated OTP code. Automatically logs in the user by generating a new session token, which is stored in the `token` variable."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User Profile (Me)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"me"
+							]
+						},
+						"description": "Retrieves the full profile details of the currently authenticated user (inherits Bearer Authorization)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile Details",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"John Smith\",\n  \"emailAddress\": \"johnsmith@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"profile"
+							]
+						},
+						"description": "Updates the full name or email address of the currently authenticated user."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.token) {",
+									"    pm.collectionVariables.set(\"token\", response.token);",
+									"    console.log(\"New auth token automatically saved to collection variable 'token'\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newpassword123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/update-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"update-password"
+							]
+						},
+						"description": "Changes the password of the currently authenticated user. Automatically captures the new auth token returned from the reset."
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Session Access Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.token) {",
+									"    pm.collectionVariables.set(\"token\", response.token);",
+									"    console.log(\"New access token automatically saved to collection variable 'token'\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "Request a new short-lived access token by sending the long-lived refresh token stored in cookie (Automatically updates the `token` variable)."
+					},
+					"response": []
+				},
+				{
+					"name": "Logout User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.collectionVariables.set(\"token\", \"\");",
+									"pm.collectionVariables.set(\"temp_token\", \"\");",
+									"console.log(\"Cleared Postman access tokens\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Logouts the user, invalidates the active refresh token cookie in server DB, and clears cookie headers."
+					},
+					"response": []
+				},
+				{
+					"name": "Two-Factor Auth (2FA)",
+					"item": [
+						{
+							"name": "Initiate 2FA Setup",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/auth/2fa/setup",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"2fa",
+										"setup"
+									]
+								},
+								"description": "Generates a 2FA secret base32 key and a QR code Data URL representing it. (Requires Authentication)"
+							},
+							"response": []
+						},
+						{
+							"name": "Complete 2FA Verification",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"token\": \"123456\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/auth/2fa/verify",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"2fa",
+										"verify"
+									]
+								},
+								"description": "Sends a 6-digit verification code from your authenticator app (Google/Microsoft Authenticator) to enable 2FA protection on the account. (Requires Authentication)"
+							},
+							"response": []
+						},
+						{
+							"name": "Complete Login using 2FA",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const response = pm.response.json();",
+											"if (response.success && response.token) {",
+											"    pm.collectionVariables.set(\"token\", response.token);",
+											"    console.log(\"Auth token automatically saved to collection variable 'token'\");",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"tempToken\": \"{{temp_token}}\",\n  \"token\": \"123456\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/auth/2fa/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"2fa",
+										"login"
+									]
+								},
+								"description": "Completes 2FA login verification using the 6-digit TOTP code and the temp token. Generates Access & Refresh tokens."
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Users (Admin)",
+			"item": [
+				{
+					"name": "List All Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users?includeDeleted=true",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users"
+							],
+							"query": [
+								{
+									"key": "includeDeleted",
+									"value": "true",
+									"description": "If true, returns soft-deleted users in the list. Defaults to false."
+								}
+							]
+						},
+						"description": "Retrieves a listing of all registered users. Supports includeDeleted query parameter to check soft-deleted accounts (Requires administrative authentication)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Jane Doe\",\n  \"emailAddress\": \"janedoe@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"user\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						},
+						"description": "Directly creates a user account with a designated role (Admin action)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{user_id}}"
+							]
+						},
+						"description": "Fetches detailed account info for a single user by their database object ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User By ID",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Jane Smith\",\n  \"role\": \"admin\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{user_id}}"
+							]
+						},
+						"description": "Updates profile information (such as fullName or user role) for a specific user ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle User Account Status",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"suspended\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{user_id}}",
+								"status"
+							]
+						},
+						"description": "Suspends or activates a user account. Expects status value to be 'active' or 'suspended' (Admin action)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{user_id}}"
+							]
+						},
+						"description": "Soft-deletes a user from the system by setting isDeleted to true (Admin action)."
+					},
+					"response": []
+				},
+				{
+					"name": "Restore User Account",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/{{user_id}}/restore",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{user_id}}",
+								"restore"
+							]
+						},
+						"description": "Restores and reactivates a soft-deleted user account by its database object ID (Admin action)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Dashboard (Admin)",
+			"item": [
+				{
+					"name": "Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/dashboard",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"dashboard"
+							]
+						},
+						"description": "Retrieves comprehensive administration dashboard metrics including storage metrics, weekly uploads, formats breakdown, user growth, and audit log history."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Activity Audit Logs (Admin)",
+			"item": [
+				{
+					"name": "Get Activity Logs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/activities?page=1&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"activities"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Retrieves paginated administrative audit logs (e.g. tracking when images were deleted, user roles changed, status modified)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Images",
+			"item": [
+				{
+					"name": "Upload Image",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/images/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"images",
+								"upload"
+							]
+						},
+						"description": "Uploads a new image file (form-data: key 'image', value 'file'). Processed using Sharp (webp output, optimized + generated thumbnail). Requires user authentication."
+					},
+					"response": []
+				},
+				{
+					"name": "List Uploaded Images (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/images?page=1&limit=10&status=pending",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"images"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "pending",
+									"description": "Filter by moderationStatus (pending, approved, rejected)"
+								}
+							]
+						},
+						"description": "List uploaded image metadata, with pagination and optional moderation status filtering (Admin action)."
+					},
+					"response": []
+				},
+				{
+					"name": "Moderate Image (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"approved\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/images/{{image_id}}/moderate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"images",
+								"{{image_id}}",
+								"moderate"
+							]
+						},
+						"description": "Approves or rejects an uploaded image. Body status parameter accepts 'approved' or 'rejected' (Admin action)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Image Record (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/images/{{image_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"images",
+								"{{image_id}}"
+							]
+						},
+						"description": "Permanently deletes an image record and its association from the database (Admin action)."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "otp",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "image_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "temp_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
